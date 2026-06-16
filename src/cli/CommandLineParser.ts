@@ -274,7 +274,7 @@ export default class CommandLineParser {
   static #parseArgs() {
     const opts = commandLineArgs(OPT_DEFS, { stopAtFirstUnknown: true });
     if (opts['_unknown']) {
-      const unknownOpt = Object.keys(opts['_unknown'])[0];
+      const unknownOpt = opts['_unknown'][0];
       throw Error(`Unknown option '${unknownOpt}'`);
     }
     return opts;

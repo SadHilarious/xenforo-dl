@@ -21,6 +21,8 @@ export interface ThreadMessageAttachment {
   index: number;
   url: string;
   filename?: string;
+  mediaUrl?: string;
+  comments?: { user?: string; text: string }[];
 }
 
 export interface ThreadPage extends Thread {

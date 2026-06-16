@@ -75,10 +75,13 @@ export default class Parser {
               const matches = attachmentLinkRegex.exec(href);
               if (matches && !isNaN(Number(matches[2]))) {
                 const imgEl = linkEl.find('img');
+                const sidebarHref = linkEl.attr('data-lb-sidebar-href');
+                const mediaUrl = sidebarHref ? new URL(sidebarHref.split('?')[0], url).toString() : undefined;
                 return {
                   id: Number(matches[2]),
                   url: new URL(href, url).toString(),
                   filename: imgEl.attr('alt') || imgEl.attr('title'),
+                  mediaUrl,
                   el: linkEl
                 };
               }
@@ -95,7 +98,8 @@ export default class Parser {
             id: link.id,
             index: i,
             url: link.url,
-            filename: link.filename
+            filename: link.filename,
+            mediaUrl: link.mediaUrl
           };
         });
 
@@ -127,12 +131,10 @@ export default class Parser {
   parseForumPage(html: string, originURL: string): ForumPage {
     const $ = cheerioLoad(html);
     const idAttr = $('html').attr('data-content-key') || '';
-    const id = idAttr.startsWith('forum-') ? Number(idAttr.substring(6)) : null;
-    if (!id) {
-      throw Error(`Failed to obtain forum ID from "${originURL}"`);
-    }
-    const url = $('link[rel="canonical"]').attr('href') || '';
-    const title = $('meta[property="og:title"]').attr('content') || '';
+    const id = idAttr.startsWith('forum-') ? Number(idAttr.substring(6)) : 0;
+    
+    const url = $('link[rel="canonical"]').attr('href') || originURL || '';
+    const title = $('meta[property="og:title"]').attr('content') || $('title').text() || 'Forum';
 
     if (!url || !title) {
       throw Error(`Failed to obtain 'url' and 'title' from "${originURL}"`);
@@ -194,7 +196,7 @@ export default class Parser {
         if (href) {
           const forumLink = URLHelper.parseForumURL(href);
           const title = this.#htmlToText(linkEl.html()).trim();
-          if (forumLink?.id && title) {
+          if (forumLink && title) {
             return {
               title,
               url: new URL(href, baseURL).toString()
@@ -235,5 +237,14 @@ export default class Parser {
       return '';
     }
     return htmlToText(value);
+  }
+
+  parseMediaComments(html: string): { user?: string; text: string }[] {
+    const $ = cheerioLoad(html);
+    return $('.message--simple').map((_i, el) => {
+      const user = $(el).attr('data-author');
+      const text = $(el).find('.message-body').text().trim();
+      return { user, text };
+    }).toArray();
   }
 }

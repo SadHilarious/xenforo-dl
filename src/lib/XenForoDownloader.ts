@@ -257,6 +257,29 @@ export default class XenForoDownloader {
             if (hasAttachments) {
               fse.ensureDirSync(attachmentSavePath);
               await Promise.all(message.attachments.map((attachment) => this.#downloadMessageAttachment(attachment, attachmentSavePath, stats, signal)));
+
+              await Promise.all(message.attachments.map(async (attachment) => {
+                if (attachment.mediaUrl) {
+                  try {
+                    const fetcher = await this.getFetcher();
+                    const { html } = await this.pageFetchLimiter.schedule(() => fetcher.fetchHTML({
+                      url: attachment.mediaUrl!,
+                      maxRetries: this.config.request.maxRetries,
+                      retryInterval: this.config.request.minTime.page,
+                      signal
+                    }));
+                    attachment.comments = this.parser.parseMediaComments(html);
+                    if (attachment.comments.length > 0) {
+                      this.log('debug', `Parsed ${attachment.comments.length} comments for attachment ${attachment.filename || attachment.id}`);
+                    }
+                  } catch (error) {
+                    if (this.#isErrorNonContinuable(error)) {
+                      throw error;
+                    }
+                    this.log('warn', `Failed to fetch comments for attachment from ${attachment.mediaUrl}:`, error);
+                  }
+                }
+              }));
             }
             this.#saveMessage(message, messageFile);
             stats.processedMessageCount++;
