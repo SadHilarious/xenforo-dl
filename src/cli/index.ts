@@ -84,7 +84,7 @@ export default class XenForoDownloaderCLI {
     }
 
     const downloaderName = downloader.name;
-    const displayConfig = this.#getConfigForDisplay(downloader.getConfig());
+    const displayConfig = this.#getConfigForDisplay(downloader.getConfig() as any);
 
     if (!options.noPrompt) {
       if (options.logging.level === 'none') {

@@ -118,12 +118,28 @@ export default class Parser {
       .toArray()
       .filter((v) => v !== null);
 
+    const customFields: Record<string, string> = {};
+    $('dl.pairs, dl.customField').each((_i, _el) => {
+      const dt = $(_el).find('dt').text().trim();
+      const dd = $(_el).find('dd').text().trim();
+      if (dt && dd) {
+        customFields[dt] = dd;
+      }
+    });
+
+    const metadata = {
+      campus: customFields['Campus'] || undefined,
+      semester: customFields['Học kỳ'] || customFields['Kỳ học'] || undefined,
+      documentType: customFields['Loại tài liệu'] || undefined
+    };
+
     return {
       id,
       url,
       breadcrumbs,
       title,
       messages,
+      metadata,
       ...this.#parseNav($, url)
     };
   }
@@ -142,18 +158,29 @@ export default class Parser {
 
     const subforums = this.#findForumLinks($('div.node--forum'), $, url);
 
-    const threads = $('div.structItem--thread div.structItem-title')
-      .find('a')
+    const threads = $('div.structItem--thread')
       .map((_i, _el) => {
-        const el = $(_el);
-        const href = el.attr('href');
+        const titleEl = $(_el).find('div.structItem-title');
+        const prefix = titleEl.find('span.label').text().trim() || undefined;
+        
+        const linkEl = titleEl.find('a').filter((i, el) => {
+          const href = $(el).attr('href') || '';
+          return href.includes('/threads/');
+        }).first();
+        
+        if (!linkEl.length) {
+          return null;
+        }
+
+        const href = linkEl.attr('href');
         if (href) {
           const threadLink = URLHelper.parseThreadURL(href);
-          const title = this.#htmlToText(el.html()).trim();
+          const title = this.#htmlToText(linkEl.html()).trim();
           if (threadLink?.id && title) {
             const threadURL = new URL(href, url).toString();
             return {
               title,
+              prefix,
               url: threadURL.endsWith('/unread') ? threadURL.substring(0, threadURL.length - 7) : threadURL
             };
           }

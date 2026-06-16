@@ -21,7 +21,8 @@ const COMMAND_LINE_ARGS = {
   minTimePage: 'min-time-page',
   minTimeAttachment: 'min-time-image',
   noPrompt: 'no-prompt',
-  continue: 'continue'
+  continue: 'continue',
+  filterPrefix: 'filter-prefix'
 } as const;
 
 const OPT_DEFS = [
@@ -115,6 +116,14 @@ const OPT_DEFS = [
     description: 'Do not prompt for confirmation to proceed',
     alias: 'y',
     type: Boolean
+  },
+  {
+    name: COMMAND_LINE_ARGS.filterPrefix,
+    description: 'Filter threads by given prefixes (e.g. "Đề Thi PE")',
+    alias: 'f',
+    type: String,
+    multiple: true,
+    typeLabel: '<prefixes>'
   }
 ];
 
@@ -157,6 +166,12 @@ export default class CommandLineParser {
           value: String(value).trim()
         };
       }
+      if (Array.isArray(value)) {
+        return {
+          key: __getOptNameUsed(key),
+          value: value as string[]
+        };
+      }
       return undefined;
     };
 
@@ -176,6 +191,7 @@ export default class CommandLineParser {
       },
       continue: __getValue(COMMAND_LINE_ARGS.continue),
       noPrompt: __getValue(COMMAND_LINE_ARGS.noPrompt),
+      filterPrefix: __getValue(COMMAND_LINE_ARGS.filterPrefix) as any,
       logging: {
         level: __getValue(COMMAND_LINE_ARGS.logLevel),
         file: __getValue(COMMAND_LINE_ARGS.logFile)

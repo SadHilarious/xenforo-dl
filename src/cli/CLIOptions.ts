@@ -14,11 +14,12 @@ export interface CLIOptions extends Omit<DownloaderOptions, 'dirStructure' | 'lo
     file?: string;
   };
   continue: boolean;
+  filterPrefix?: string[];
 }
 
 export interface CLIOptionParserEntry {
   key: string;
-  value?: string;
+  value?: string | string[];
 }
 
 export function getCLIOptions(): CLIOptions {
@@ -68,7 +69,8 @@ export function getCLIOptions(): CLIOptions {
       level: CLIOptionValidator.validateString(commandLineOptions.logging?.level, 'info', 'debug', 'warn', 'error', 'none') || 'info',
       file: CLIOptionValidator.validateString(commandLineOptions.logging?.file)
     },
-    continue: CLIOptionValidator.validateBoolean(commandLineOptions.continue) || false
+    continue: CLIOptionValidator.validateBoolean(commandLineOptions.continue) || false,
+    filterPrefix: CLIOptionValidator.validateStringArray(commandLineOptions.filterPrefix as any)
   };
 
   return options;

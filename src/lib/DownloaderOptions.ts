@@ -23,10 +23,12 @@ export interface DownloaderOptions {
   overwrite?: boolean;
   continue?: boolean;
   logger?: Logger | null;
+  filterPrefix?: string[];
+  noPrompt?: boolean;
 }
 
 const DEFAULT_DOWNLOADER_CONFIG: Pick<DeepRequired<DownloaderConfig>,
-  'outDir' | 'dirStructure' | 'request' | 'overwrite' | 'continue'> = {
+  'outDir' | 'dirStructure' | 'request' | 'overwrite' | 'continue' | 'filterPrefix' | 'noPrompt'> = {
 
     outDir: process.cwd(),
     dirStructure: {
@@ -45,7 +47,9 @@ const DEFAULT_DOWNLOADER_CONFIG: Pick<DeepRequired<DownloaderConfig>,
       cookie: null
     },
     overwrite: false,
-    continue: false
+    continue: false,
+    filterPrefix: [],
+    noPrompt: false
   };
 
 export function getDownloaderConfig(url: string, options?: DownloaderOptions): DownloaderConfig {
@@ -69,6 +73,8 @@ export function getDownloaderConfig(url: string, options?: DownloaderOptions): D
     },
     overwrite: pickDefined(options?.overwrite, defaults.overwrite),
     continue: pickDefined(options?.continue, defaults.continue),
+    filterPrefix: pickDefined(options?.filterPrefix, defaults.filterPrefix),
+    noPrompt: pickDefined(options?.noPrompt, defaults.noPrompt),
     targetURL: url
   };
 }

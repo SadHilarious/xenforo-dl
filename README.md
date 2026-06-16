@@ -73,6 +73,7 @@ For URLs not matching the above patterns, `xenforo-dl` will scrape for forum lin
 | `-i`, `--min-time-image` | (number) Minimum time, in milliseconds, to wait between download requests for attachments. Default: 200 |
 | `--continue` | Continue from previous download |
 | `-y`, `--no-prompt` | Do not prompt for confirmation to proceed |
+| `-f`, `--filter-prefix` | (string) Filter threads by prefix|
 
 ### Cookies
 

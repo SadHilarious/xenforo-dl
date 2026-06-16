@@ -23,7 +23,9 @@ export interface DownloaderConfig extends DeepRequired<Pick<DownloaderOptions,
   'dirStructure' |
   'request' |
   'overwrite' |
-  'continue'>> {
+  'continue' |
+  'filterPrefix' |
+  'noPrompt'>> {
     targetURL: string;
   }
 
@@ -324,8 +326,25 @@ export default class XenForoDownloader {
         });
         // Download threads
         if (forumPage.threads.length > 0) {
-          this.log('info', `This page has ${forumPage.threads.length} threads`);
-          for (const thread of forumPage.threads) {
+          let threadsToDownload = forumPage.threads;
+          if (this.config.filterPrefix && this.config.filterPrefix.length > 0) {
+            threadsToDownload = threadsToDownload.filter(t => t.prefix && this.config.filterPrefix!.includes(t.prefix));
+          } else if (!this.config.noPrompt) {
+            const uniquePrefixes = Array.from(new Set(forumPage.threads.map(t => t.prefix).filter(p => !!p)));
+            if (uniquePrefixes.length > 0) {
+              const { prompt } = await import('enquirer');
+              const { selected } = await prompt<{ selected: string[] }>({
+                type: 'multiselect',
+                name: 'selected',
+                message: `Select prefixes to download from page ${forumPage.currentPage} / ${forumPage.totalPages} (Space to select, Enter to confirm):`,
+                choices: uniquePrefixes as string[]
+              });
+              threadsToDownload = threadsToDownload.filter(t => t.prefix && selected.includes(t.prefix));
+            }
+          }
+
+          this.log('info', `This page has ${forumPage.threads.length} threads. Filtering selected ${threadsToDownload.length} threads to download.`);
+          for (const thread of threadsToDownload) {
             await this.#process(thread.url, stats, signal);
           }
         }

@@ -5,6 +5,11 @@ export interface Thread extends ThreadLike {
     title: string;
   }[];
   messages: ThreadMessage[];
+  metadata?: {
+    campus?: string;
+    semester?: string;
+    documentType?: string;
+  };
 }
 
 export interface ThreadMessage {
@@ -34,4 +39,5 @@ export interface ThreadPage extends Thread {
 export interface ThreadLike {
   url: string;
   title: string;
+  prefix?: string;
 }
