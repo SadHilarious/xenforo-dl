@@ -1,8 +1,6 @@
-<a href='https://ko-fi.com/C0C5RGOOP' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi2.png?v=3' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
-
 # xenforo-dl
 
-A [XenForo](https://xenforo.com/) forum downloader written in [Node.js](https://nodejs.org):
+A smal fork of [patrickkfkan/xenforo-dl](https://github.com/patrickkfkan/xenforo-dl) as [XenForo](https://xenforo.com/) forum downloader written in [Node.js](https://nodejs.org):
 
 - Scrapes content from forum pages
 - For each thread, downloads attachments and saves messages in text files
@@ -16,18 +14,26 @@ Since the downloader works through scraping, it is not guaranteed to work with a
 
 First, install [Node.js](https://nodejs.org/).
 
-Then, in a terminal, run the following command:
+Then, clone this repo and install dependencies:
 
 ```
-npm i -g xenforo-dl
+npm install
+```
+
+And build these tsx files:
+```
+npm run build
 ```
 
 ## Usage
 
 ```
-$ xenforo-dl [OPTION]... URL
+node ./bin/xenforo-dl.js [OPTION]... URL
 ```
-
+or link it globally:
+```
+npm link && xenforo-dl
+```
 ### URL
 
 #### Thread URLs
@@ -55,7 +61,7 @@ For URLs not matching the above patterns, `xenforo-dl` will scrape for forum lin
 | Option    | Description |
 |-----------|-------------|
 | `-h`, `--help` | Display usage guide |
-| `-k`, `--cookie` | (string) Cookie to set in requests. See [Cookies](#cookies). |
+| `-k`, `--cookie` | (string or cookie.txt) Cookie to set in requests. See [Cookies](#cookies). |
 | `-o`, `--out-dir` | (string) Path of save directory. Default: current working directory. |
 | `-d`, `--dir-structure` | Combination of flags controlling the output directory structure of downloaded threads: <ul><li>`s`: Include directory for the forum site.</li><li>`pl`: Include directory for each category or forum leading up to the target thread.</li><li>`pi`: Include directory for the immediate section or forum containing the target thread.</li><li>`t`: Include directory for the target thread itself.</li><li>`a`: Include directory for attachments.</li><li>`-`: No directory structure. Everything will be saved directly to --out-dir.</li></ul><p>Default: `splta`</p>|
 | `-w`, `--overwrite` | Overwrite existing attachment files |
@@ -76,7 +82,8 @@ Cookies allow you to download content that would otherwise be inaccessible due t
 2. Press `F12` to bring up Developer Tools.
 3. Select `Network` tab, followed by `HTML` filter.
 4. Press `F5` to refresh the page. Select one of the entries that appear under the `Network` tab.
-5. Under `Headers` -> `Request Headers`, you should see the `Cookie` entry. Copy the value of that entry and pass it to `xenforo-dl`.
+5. Under `Headers` -> `Request Headers`, you should see the `Cookie` entry. 
+6. Create a file name `cookie.txt` then pass parameter `-k ./cookie.txt` to the command.
 
 Cookies should remain valid until they expire or you sign out of the forum site.
 
