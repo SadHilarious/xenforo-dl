@@ -3,3 +3,10 @@ node_modules/
 test/
 stuffs/
 cookie.txt
+cookie*.txt
+.playwright-mcp/
+.playwright-profile/
+.browser-profile/
+storage-state*.json
+downloads/
+*.part

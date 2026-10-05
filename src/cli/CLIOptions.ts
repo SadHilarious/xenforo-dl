@@ -28,26 +28,37 @@ export function getCLIOptions(): CLIOptions {
   const dirStructure = CLIOptionValidator.validateFlags(commandLineOptions.dirStructure, 's', 'pl', 'pi', 't', 'a', '-');
 
   let cookie: string | null = CLIOptionValidator.validateString(commandLineOptions?.request?.cookie) || null;
-  if (cookie) {
-    if (fs.existsSync(cookie)) {
-      try {
-        cookie = fs.readFileSync(cookie, 'utf-8').trim();
-      } catch (err) {
-        // Keep original if read fails
-      }
+  if (cookie && fs.existsSync(cookie)) {
+    try {
+      cookie = fs.readFileSync(cookie, 'utf-8').trim();
     }
-  } else {
-    if (process.env.XENFORO_COOKIE) {
-      cookie = process.env.XENFORO_COOKIE.trim();
-    } else if (process.env.COOKIE) {
-      cookie = process.env.COOKIE.trim();
-    } else if (fs.existsSync('./cookie.txt')) {
+    catch {
+      throw Error('Unable to read the supplied cookie file');
+    }
+  }
+  else if (!cookie) {
+    cookie = process.env.XENFORO_COOKIE?.trim() || process.env.COOKIE?.trim() || null;
+    if (!cookie && fs.existsSync('./cookie.txt')) {
       try {
         cookie = fs.readFileSync('./cookie.txt', 'utf-8').trim();
-      } catch (err) {
-        // Ignore
+      }
+      catch {
+        throw Error('Unable to read cookie.txt');
       }
     }
+  }
+  if (cookie && (cookie.startsWith('#') || cookie.startsWith('{') || cookie.startsWith('[') || (/[\r\n]/).test(cookie) || !cookie.includes('='))) {
+    throw Error('Cookie must be a raw request-header value (name=value; other=value), not Netscape/JSON or a missing file path');
+  }
+  const browser = CLIOptionValidator.validateBoolean(commandLineOptions?.request?.browser);
+  const browserLogin = CLIOptionValidator.validateBoolean(commandLineOptions?.request?.browserLogin);
+  const timeoutValue = CLIOptionValidator.validateString(commandLineOptions?.request?.browserTimeout);
+  const browserTimeout = timeoutValue === undefined ? undefined : Number(timeoutValue);
+  if (browserTimeout !== undefined && (!Number.isSafeInteger(browserTimeout) || browserTimeout <= 0 || browserTimeout > 2147483647)) {
+    throw Error('--browser-timeout must be a positive integer no greater than 2147483647');
+  }
+  if ((browserLogin || timeoutValue !== undefined) && !browser) {
+    throw Error('--browser-login and --browser-timeout require --browser');
   }
 
   const options: CLIOptions = {
@@ -62,7 +73,10 @@ export function getCLIOptions(): CLIOptions {
         page: CLIOptionValidator.validateNumber(commandLineOptions?.request?.minTime?.page),
         attachment: CLIOptionValidator.validateNumber(commandLineOptions?.request?.minTime?.attachment)
       },
-      cookie
+      cookie,
+      browser,
+      browserLogin,
+      browserTimeout
     },
     noPrompt: CLIOptionValidator.validateBoolean(commandLineOptions.noPrompt) || false,
     logging: {
