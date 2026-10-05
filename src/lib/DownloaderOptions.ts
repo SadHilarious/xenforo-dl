@@ -20,6 +20,7 @@ export interface DownloaderOptions {
     };
     cookie?: string | null;
     browser?: boolean;
+    browserChannel?: string;
     browserLogin?: boolean;
     browserTimeout?: number;
   };
@@ -49,6 +50,7 @@ const DEFAULT_DOWNLOADER_CONFIG: Pick<DeepRequired<DownloaderConfig>,
       },
       cookie: null,
       browser: false,
+      browserChannel: '',
       browserLogin: false,
       browserTimeout: 120000
     },
@@ -84,6 +86,7 @@ export function getDownloaderConfig(url: string, options?: DownloaderOptions): D
       },
       cookie: pickDefined(options?.request?.cookie, defaults.request.cookie),
       browser: pickDefined(options?.request?.browser, defaults.request.browser),
+      browserChannel: pickDefined(options?.request?.browserChannel, defaults.request.browserChannel),
       browserLogin: pickDefined(options?.request?.browserLogin, defaults.request.browserLogin),
       browserTimeout
     },

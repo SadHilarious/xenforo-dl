@@ -12,6 +12,7 @@ const COMMAND_LINE_ARGS = {
   url: 'url',
   cookie: 'cookie',
   browser: 'browser',
+  browserChannel: 'browser-channel',
   browserLogin: 'browser-login',
   browserTimeout: 'browser-timeout',
   outDir: 'out-dir',
@@ -51,6 +52,12 @@ const OPT_DEFS = [
     name: COMMAND_LINE_ARGS.browser,
     description: 'Use a local headed Chromium session for pages and attachments (Node >=20 required)',
     type: Boolean
+  },
+  {
+    name: COMMAND_LINE_ARGS.browserChannel,
+    description: 'Browser channel to launch (e.g. "chrome", "msedge", "chromium"). Requires --browser',
+    type: String,
+    typeLabel: '<channel>'
   },
   {
     name: COMMAND_LINE_ARGS.browserLogin,
@@ -210,6 +217,7 @@ export default class CommandLineParser {
         },
         cookie: __getValue(COMMAND_LINE_ARGS.cookie),
         browser: __getValue(COMMAND_LINE_ARGS.browser),
+        browserChannel: __getValue(COMMAND_LINE_ARGS.browserChannel),
         browserLogin: __getValue(COMMAND_LINE_ARGS.browserLogin),
         browserTimeout: __getValue(COMMAND_LINE_ARGS.browserTimeout)
       },

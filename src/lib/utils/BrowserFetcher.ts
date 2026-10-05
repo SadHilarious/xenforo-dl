@@ -13,7 +13,7 @@ import { normalizeAbortError, sleepBeforeExecute } from './Misc.js';
 import URLHelper from './URLHelper.js';
 
 type FetchArgs = Parameters<Fetcher['fetchHTML']>[0];
-type BrowserOptions = { url: string; cookie?: string | null; timeout: number; requireLogin: boolean; signal?: AbortSignal; headless?: boolean };
+type BrowserOptions = { url: string; cookie?: string | null; timeout: number; requireLogin: boolean; channel?: string; signal?: AbortSignal; headless?: boolean };
 
 export default class BrowserFetcher {
   name = 'BrowserFetcher';
@@ -46,9 +46,27 @@ export default class BrowserFetcher {
         throw new FetcherError('Browser mode requires Playwright; install optional dependencies with npm install --include=optional', options.url, true);
       });
       instance.#check(options.url, options.signal);
-      instance.#browser = await chromium.launch({ headless: options.headless ?? false, timeout: options.timeout }).catch(() => {
-        throw new FetcherError('Cannot start Chromium; install it with npx playwright install chromium', options.url, true);
-      });
+      const launchOptions: Record<string, unknown> = {
+        headless: options.headless ?? false,
+        timeout: options.timeout,
+        ignoreDefaultArgs: [ '--enable-automation' ],
+        args: [ '--disable-blink-features=AutomationControlled' ]
+      };
+      if (options.channel) {
+        launchOptions.channel = options.channel;
+      }
+      else if (!options.headless) {
+        launchOptions.channel = 'chrome';
+      }
+      try {
+        instance.#browser = await chromium.launch(launchOptions);
+      }
+      catch {
+        delete launchOptions.channel;
+        instance.#browser = await chromium.launch(launchOptions).catch(() => {
+          throw new FetcherError('Cannot start Chromium; install it with npx playwright install chromium', options.url, true);
+        });
+      }
       if (instance.#closed) {
         await instance.#browser.close();
         instance.#check(options.url, options.signal);
@@ -56,11 +74,18 @@ export default class BrowserFetcher {
       instance.#browser.on('disconnected', () => {
         instance.close().catch(() => {});
       });
-      instance.#context = await instance.#browser.newContext({ acceptDownloads: true, serviceWorkers: 'block' });
+      instance.#context = await instance.#browser.newContext({ acceptDownloads: true });
       await instance.#context.addCookies(cookies);
       await instance.#context.route('**/*', async (route) => {
         const request = route.request();
-        const url = parseHTTPURL(request.url());
+        let url: URL;
+        try {
+          url = parseHTTPURL(request.url());
+        }
+        catch {
+          await route.continue().catch(() => {});
+          return;
+        }
         const topLevel = request.isNavigationRequest() && !request.frame().parentFrame();
         // Native cookies ignore ports. Block these requests before Chromium can send imported credentials.
         if (url.origin !== instance.#origin.origin && (topLevel || url.hostname === instance.#origin.hostname)) {
@@ -68,8 +93,6 @@ export default class BrowserFetcher {
           await route.abort('blockedbyclient').catch(() => {});
           return;
         }
-        // Playwright routes cover only the first request in a redirect chain; CDP checks every hop.
-        await instance.#guard(request.frame().page());
         await route.continue().catch(() => {});
       });
       instance.#page = await instance.#context.newPage();
@@ -97,7 +120,7 @@ export default class BrowserFetcher {
       if (index < 1 || !(/^[!#$%&'*+.^_`|~\w-]+$/).test(name) || names.has(name) || (/[^\x21-\x7e]/).test(value)) throw invalid();
       names.add(name);
       return { name, value, domain: this.#origin.hostname, path: '/', secure: this.#origin.protocol === 'https:' };
-    }).filter(({ name }) => !(/^(?:cf_clearance|__cf_bm|cf_chl.*)$/i).test(name));
+    });
   }
 
   #check(url: string, signal?: AbortSignal) {
@@ -120,9 +143,21 @@ export default class BrowserFetcher {
         let redirects = 0;
         session.on('Fetch.requestPaused', (event) => {
           (async () => {
-            const target = parseHTTPURL(event.request.url);
-            const mainDocument = event.resourceType === 'Document' && event.frameId === frameTree.frame.id;
             const requestStage = event.responseStatusCode === undefined && event.responseErrorReason === undefined;
+            let target: URL;
+            try {
+              target = parseHTTPURL(event.request.url);
+            }
+            catch {
+              if (requestStage) {
+                await session.send('Fetch.continueRequest', { requestId: event.requestId });
+              }
+              else {
+                await session.send('Fetch.continueResponse', { requestId: event.requestId });
+              }
+              return;
+            }
+            const mainDocument = event.resourceType === 'Document' && event.frameId === frameTree.frame.id;
             if (target.origin !== this.#origin.origin && (mainDocument || target.hostname === this.#origin.hostname)) {
               throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', this.options.url, true);
             }
@@ -374,15 +409,16 @@ export default class BrowserFetcher {
         }
         const contentType = header('content-type');
         const html = (/^(?:text\/html|application\/xhtml\+xml)\b/i).test(contentType) || header('cf-mitigated').toLowerCase() === 'challenge';
-        if (!html) {
-          assertResponseStatus(status, src, header('cf-mitigated'));
-          if (event.request.method !== 'GET' || status === 204 || status === 205 || header('content-range')) throw new FetcherError('Attachment GET returned no complete file', src, true);
-          const length = header('content-length');
-          metadata = { url: requestURL, contentType,
-            length: (!header('content-encoding') || header('content-encoding') === 'identity') && (/^\d+$/).test(length) ? Number(length) : undefined };
+        if (html) {
+          throw new FetcherError('Attachment response is HTML, not a file', src, true);
         }
+        assertResponseStatus(status, src, header('cf-mitigated'));
+        if (event.request.method !== 'GET' || status === 204 || status === 205 || header('content-range')) throw new FetcherError('Attachment GET returned no complete file', src, true);
+        const length = header('content-length');
+        metadata = { url: requestURL, contentType,
+          length: (!header('content-encoding') || header('content-encoding') === 'identity') && (/^\d+$/).test(length) ? Number(length) : undefined };
         const rewritten = headers.filter((item) => item.name.toLowerCase() !== 'content-disposition');
-        rewritten.push({ name: 'Content-Disposition', value: html ? 'inline' : contentDisposition(path.basename(destination)) });
+        rewritten.push({ name: 'Content-Disposition', value: contentDisposition(path.basename(destination)) });
         await client.send('Fetch.continueResponse', { requestId: event.requestId, responseCode: status, responseHeaders: rewritten });
       }, (error) => {
         reject(error);

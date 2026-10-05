@@ -51,14 +51,15 @@ export function getCLIOptions(): CLIOptions {
     throw Error('Cookie must be a raw request-header value (name=value; other=value), not Netscape/JSON or a missing file path');
   }
   const browser = CLIOptionValidator.validateBoolean(commandLineOptions?.request?.browser);
+  const browserChannel = CLIOptionValidator.validateString(commandLineOptions?.request?.browserChannel);
   const browserLogin = CLIOptionValidator.validateBoolean(commandLineOptions?.request?.browserLogin);
   const timeoutValue = CLIOptionValidator.validateString(commandLineOptions?.request?.browserTimeout);
   const browserTimeout = timeoutValue === undefined ? undefined : Number(timeoutValue);
   if (browserTimeout !== undefined && (!Number.isSafeInteger(browserTimeout) || browserTimeout <= 0 || browserTimeout > 2147483647)) {
     throw Error('--browser-timeout must be a positive integer no greater than 2147483647');
   }
-  if ((browserLogin || timeoutValue !== undefined) && !browser) {
-    throw Error('--browser-login and --browser-timeout require --browser');
+  if ((browserLogin || timeoutValue !== undefined || browserChannel !== undefined) && !browser) {
+    throw Error('--browser-login, --browser-channel and --browser-timeout require --browser');
   }
 
   const options: CLIOptions = {
@@ -75,6 +76,7 @@ export function getCLIOptions(): CLIOptions {
       },
       cookie,
       browser,
+      browserChannel,
       browserLogin,
       browserTimeout
     },

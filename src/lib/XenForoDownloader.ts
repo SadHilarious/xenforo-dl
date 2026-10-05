@@ -427,6 +427,7 @@ export default class XenForoDownloader {
           cookie: this.config.request.cookie,
           timeout: this.config.request.browserTimeout,
           requireLogin: this.config.request.browserLogin,
+          channel: this.config.request.browserChannel || undefined,
           signal
         }, this.logger);
       })() : Fetcher.getInstance(this.logger, this.config.request.cookie, new URL(this.config.targetURL).origin);
