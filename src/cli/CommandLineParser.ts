@@ -11,6 +11,9 @@ const COMMAND_LINE_ARGS = {
   help: 'help',
   url: 'url',
   cookie: 'cookie',
+  browser: 'browser',
+  browserLogin: 'browser-login',
+  browserTimeout: 'browser-timeout',
   outDir: 'out-dir',
   dirStructure: 'dir-structure',
   overwrite: 'overwrite',
@@ -40,9 +43,25 @@ const OPT_DEFS = [
   },
   {
     name: COMMAND_LINE_ARGS.cookie,
-    description: 'Cookie to set in requests',
+    description: 'Raw Cookie header or path to a file containing it',
     alias: 'k',
     type: String
+  },
+  {
+    name: COMMAND_LINE_ARGS.browser,
+    description: 'Use a local headed Chromium session for pages and attachments (Node >=20 required)',
+    type: Boolean
+  },
+  {
+    name: COMMAND_LINE_ARGS.browserLogin,
+    description: 'Require authenticated XenForo content; allows manual login in the browser. Requires --browser',
+    type: Boolean
+  },
+  {
+    name: COMMAND_LINE_ARGS.browserTimeout,
+    description: 'Browser operation/login timeout in milliseconds. Default: 120000. Requires --browser',
+    type: String,
+    typeLabel: '<milliseconds>'
   },
   {
     name: COMMAND_LINE_ARGS.outDir,
@@ -151,7 +170,9 @@ export default class CommandLineParser {
       const booleanTypeArgs = [
         COMMAND_LINE_ARGS.noPrompt,
         COMMAND_LINE_ARGS.overwrite,
-        COMMAND_LINE_ARGS.continue
+        COMMAND_LINE_ARGS.continue,
+        COMMAND_LINE_ARGS.browser,
+        COMMAND_LINE_ARGS.browserLogin
       ];
       if (booleanTypeArgs.includes(key as any) && value !== undefined) {
         value = '1';
@@ -187,7 +208,10 @@ export default class CommandLineParser {
           page: __getValue(COMMAND_LINE_ARGS.minTimePage),
           attachment: __getValue(COMMAND_LINE_ARGS.minTimeAttachment)
         },
-        cookie: __getValue(COMMAND_LINE_ARGS.cookie)
+        cookie: __getValue(COMMAND_LINE_ARGS.cookie),
+        browser: __getValue(COMMAND_LINE_ARGS.browser),
+        browserLogin: __getValue(COMMAND_LINE_ARGS.browserLogin),
+        browserTimeout: __getValue(COMMAND_LINE_ARGS.browserTimeout)
       },
       continue: __getValue(COMMAND_LINE_ARGS.continue),
       noPrompt: __getValue(COMMAND_LINE_ARGS.noPrompt),

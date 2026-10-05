@@ -19,6 +19,9 @@ export interface DownloaderOptions {
       attachment?: number;
     };
     cookie?: string | null;
+    browser?: boolean;
+    browserLogin?: boolean;
+    browserTimeout?: number;
   };
   overwrite?: boolean;
   continue?: boolean;
@@ -44,7 +47,10 @@ const DEFAULT_DOWNLOADER_CONFIG: Pick<DeepRequired<DownloaderConfig>,
         page: 500,
         attachment: 200
       },
-      cookie: null
+      cookie: null,
+      browser: false,
+      browserLogin: false,
+      browserTimeout: 120000
     },
     overwrite: false,
     continue: false,
@@ -54,6 +60,13 @@ const DEFAULT_DOWNLOADER_CONFIG: Pick<DeepRequired<DownloaderConfig>,
 
 export function getDownloaderConfig(url: string, options?: DownloaderOptions): DownloaderConfig {
   const defaults = DEFAULT_DOWNLOADER_CONFIG;
+  const browserTimeout = pickDefined(options?.request?.browserTimeout, defaults.request.browserTimeout);
+  if (!Number.isSafeInteger(browserTimeout) || browserTimeout <= 0 || browserTimeout > 2147483647) {
+    throw Error('Browser timeout must be a positive integer no greater than 2147483647');
+  }
+  if (options?.request?.browserLogin && !options.request.browser) {
+    throw Error('Browser login requires browser mode');
+  }
   return {
     outDir: options?.outDir ? path.resolve(options.outDir) : defaults.outDir,
     dirStructure: {
@@ -69,7 +82,10 @@ export function getDownloaderConfig(url: string, options?: DownloaderOptions): D
         page: pickDefined(options?.request?.minTime?.page, defaults.request.minTime.page),
         attachment: pickDefined(options?.request?.minTime?.attachment, defaults.request.minTime.attachment)
       },
-      cookie: pickDefined(options?.request?.cookie, defaults.request.cookie)
+      cookie: pickDefined(options?.request?.cookie, defaults.request.cookie),
+      browser: pickDefined(options?.request?.browser, defaults.request.browser),
+      browserLogin: pickDefined(options?.request?.browserLogin, defaults.request.browserLogin),
+      browserTimeout
     },
     overwrite: pickDefined(options?.overwrite, defaults.overwrite),
     continue: pickDefined(options?.continue, defaults.continue),
