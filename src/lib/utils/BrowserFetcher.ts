@@ -158,7 +158,10 @@ export default class BrowserFetcher {
               return;
             }
             const mainDocument = event.resourceType === 'Document' && event.frameId === frameTree.frame.id;
-            if (target.origin !== this.#origin.origin && (mainDocument || target.hostname === this.#origin.hostname)) {
+            if (target.hostname === this.#origin.hostname && target.origin !== this.#origin.origin) {
+              throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', this.options.url, true);
+            }
+            if (mainDocument && !response && target.origin !== this.#origin.origin) {
               throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', this.options.url, true);
             }
             if (requestStage) {
@@ -170,7 +173,13 @@ export default class BrowserFetcher {
               if (!location || ++redirects > 20) {
                 throw new FetcherError('Invalid or excessive browser redirects', this.options.url, true);
               }
-              this.#scope(location, event.request.url);
+              const nextURL = parseHTTPURL(location, event.request.url);
+              if (nextURL.hostname === this.#origin.hostname && nextURL.origin !== this.#origin.origin) {
+                throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', this.options.url, true);
+              }
+              if (!response && nextURL.origin !== this.#origin.origin) {
+                throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', this.options.url, true);
+              }
             }
             else if (mainDocument) {
               redirects = 0;
@@ -398,12 +407,15 @@ export default class BrowserFetcher {
         download = value; resolve(value);
       });
       session = await this.#guard(page, async (event, client) => {
-        const requestURL = this.#scope(event.request.url);
+        const requestURL = parseHTTPURL(event.request.url).toString();
         const status = event.responseStatusCode || 0, headers = event.responseHeaders || [];
         const header = (name: string) => headers.find((item) => item.name.toLowerCase() === name)?.value || '';
         if (status >= 300 && status < 400) {
           if (++redirects > 20 || !header('location')) throw new FetcherError('Invalid or excessive attachment redirects', src, true);
-          this.#scope(header('location'), requestURL);
+          const nextURL = parseHTTPURL(header('location'), requestURL);
+          if (nextURL.hostname === this.#origin.hostname && nextURL.origin !== this.#origin.origin) {
+            throw new FetcherError('Cross-origin browser navigation or attachment is unsupported', src, true);
+          }
           await client.send('Fetch.continueResponse', { requestId: event.requestId });
           return;
         }
@@ -429,7 +441,7 @@ export default class BrowserFetcher {
         await downloaded; // ERR_ABORTED alone does not prove a download occurred.
       });
       [ download ] = await Promise.all([ downloaded, navigation ]);
-      if (!metadata || this.#scope(download.url()) !== metadata.url) throw new FetcherError('Download did not originate from a validated attachment GET', src, true);
+      if (!metadata || parseHTTPURL(download.url()).toString() !== metadata.url) throw new FetcherError('Download did not originate from a validated attachment GET', src, true);
       const stream = await download.createReadStream();
       ensureDirSync(path.dirname(destination));
       const fd = fs.openSync(part, 'wx');

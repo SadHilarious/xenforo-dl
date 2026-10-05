@@ -353,8 +353,9 @@ export default class XenForoDownloader {
           else if (!this.config.noPrompt) {
             const uniquePrefixes = Array.from(new Set(forumPage.threads.map((t) => t.prefix).filter((p) => !!p)));
             if (uniquePrefixes.length > 0) {
-              const { prompt } = await import('enquirer');
-              const { selected } = await prompt<{ selected: string[] }>({
+              const { default: Enquirer } = await import('enquirer');
+              const promptFunc = (Enquirer as any).prompt || new (Enquirer as any)().prompt.bind(new (Enquirer as any)());
+              const { selected } = await promptFunc({
                 type: 'multiselect',
                 name: 'selected',
                 message: `Select prefixes to download from page ${forumPage.currentPage} / ${forumPage.totalPages} (Space to select, Enter to confirm):`,
